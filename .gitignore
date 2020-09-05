@@ -1,0 +1,12 @@
+.gradle/
+.idea
+build/
+gradle/
+run/
+build.gradle
+changelog.txt
+CREDITS.txt
+gradlew
+gradlew.bat
+.DS_Store
+gradle.properties
