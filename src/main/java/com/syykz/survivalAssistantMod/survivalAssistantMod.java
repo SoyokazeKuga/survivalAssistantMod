@@ -14,8 +14,9 @@ import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 @Mod(survivalAssistantMod.MOD_ID)
 public class survivalAssistantMod {
@@ -59,39 +60,49 @@ public class survivalAssistantMod {
             playerIn.setActiveHand(handIn);
 
             // TODO: 二重for文の解消。chunk取得とMonsterMob取得の処理を分ける。
-            // TODO: 命名の修正。entityCount mobMapなど。
+            // TODO: 命名の修正。mobMapなど。
             /**
              * 自身の周囲９ChunkのMonsterEntity取得
              * Chunkは、ワールドを、256ブロックの高さの16 × 16に区切った領域。
              * ただし、world.getChunk[1][1]では (-15 <= x <= 15), (-15 <= y <= 15)の範囲が取得される。(原因不明)
              */
-            HashMap<String, Integer> mobMap = new HashMap<String, Integer>();
+            HashMap<String, Integer> monsterMap = new HashMap<String, Integer>();
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     Chunk chunk = worldIn.getChunk((int) (playerIn.posX / 16) + i - 1, (int) (playerIn.posZ / 16) + j - 1);
 
-                    ClassInheritanceMultiMap<Entity>[] entityLists = chunk.getEntityLists();
-
-                    for (int e = 0; e < entityLists.length; e++) {
-                        for (Entity entity : entityLists[e]) {
-                            if (entity instanceof MonsterEntity) {
-                                this.countMob(mobMap, entity);
-                            }
-                        }
+                    MonsterEntity[] entities = this.getMonsterEntityInChunk(chunk);
+                    for (MonsterEntity entity : entities) {
+                        this.countMob(monsterMap, entity);
                     }
                 }
             }
 
-
-            int totalMobs = mobMap.values().stream().mapToInt(Integer::intValue).sum();
-            String statusMessage = "周囲に" + totalMobs + "体います！";
+            int totalMobs = monsterMap.values().stream().mapToInt(Integer::intValue).sum();
+            String statusMessage = "周囲に" + totalMobs + "体います";
             playerIn.sendStatusMessage(new StringTextComponent(statusMessage), true);
 
-            for (HashMap.Entry<String, Integer> entry : mobMap.entrySet()) {
+            for (HashMap.Entry<String, Integer> entry : monsterMap.entrySet()) {
                 playerIn.sendMessage(new StringTextComponent(entry.getKey() + ": " + entry.getValue() + "体"));
             }
 
             return new ActionResult<>(ActionResultType.SUCCESS, itemstack);
+        }
+
+        private MonsterEntity[] getMonsterEntityInChunk(Chunk chunk) {
+            ClassInheritanceMultiMap<Entity>[] entityLists = chunk.getEntityLists();
+
+            List<MonsterEntity> monsterEntities = new ArrayList<MonsterEntity>();
+            for (int e = 0; e < entityLists.length; e++) {
+                for (Entity entity : entityLists[e]) {
+                    // TODO: フィルターの方法の再考
+                    if (entity instanceof MonsterEntity) {
+                        monsterEntities.add((MonsterEntity) entity);
+                    }
+                }
+            }
+
+            return monsterEntities.toArray(new MonsterEntity[monsterEntities.size()]);
         }
 
         private void countMob(HashMap<String, Integer> mobMap, Entity entity) {
